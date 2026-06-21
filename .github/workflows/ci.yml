@@ -61,5 +61,11 @@ jobs:
         run: cargo test --release
 
       - name: Build WASM
-        run: stellar contract build
-        working-directory: contracts
+        run: |
+          cd contracts/auction
+          cargo rustc \
+            --crate-type cdylib \
+            --target wasm32v1-none \
+            --release \
+            -- \
+            -C link-arg=-s
