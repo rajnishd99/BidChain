@@ -1,6 +1,6 @@
 # Frontend CI — runs on every push to main and every PR.
 #
-# Pipeline: checkout → setup-pnpm → setup-node → install → type-check
+# Pipeline: checkout → setup-node → install → type-check
 # → build → upload .next artifact.
 #
 # Triggers: only on changes that affect the front-end (src/, scripts/,
@@ -16,6 +16,7 @@ on:
       - "src/**"
       - "scripts/**"
       - "package.json"
+      - "package-lock.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "next.config.mjs"
@@ -28,6 +29,7 @@ on:
       - "src/**"
       - "scripts/**"
       - "package.json"
+      - "package-lock.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "next.config.mjs"
@@ -49,25 +51,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11
-
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
+          cache: npm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Type-check (tsc --noEmit)
-        run: pnpm exec tsc --noEmit
+        run: npx tsc --noEmit
 
       - name: Build
-        run: pnpm run build
+        run: npm run build
         env:
           NEXT_PUBLIC_STELLAR_NETWORK: testnet
           NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"

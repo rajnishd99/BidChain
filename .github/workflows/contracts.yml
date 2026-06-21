@@ -62,7 +62,7 @@ jobs:
         run: |
           set -euo pipefail
           if ! command -v stellar >/dev/null 2>&1; then
-            cargo install --locked stellar-cli --features opt
+            cargo install --locked stellar-cli
           else
             echo "stellar CLI already present: $(stellar --version | head -n1)"
           fi
