@@ -1,67 +1,97 @@
-# Frontend CI — runs on every push to main and every PR.
-#
-# Pipeline: checkout → setup-node → install → type-check
-# → build → upload .next artifact.
-#
-# Triggers: only on changes that affect the front-end (src/, scripts/,
-# package.json, pnpm-lock.yaml, the workflow file, or the Next.js
-# config). Contract changes are handled by contracts.yml.
-
-name: Frontend CI
+name: ci
 
 on:
   push:
-    branches: [main]
-    paths:
-      - "src/**"
-      - "scripts/**"
-      - "package.json"
-      - "package-lock.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "next.config.mjs"
-      - "tsconfig.json"
-      - ".npmrc"
-      - ".github/workflows/ci.yml"
+    branches: [main, master]
   pull_request:
-    branches: [main]
-    paths:
-      - "src/**"
-      - "scripts/**"
-      - "package.json"
-      - "package-lock.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "next.config.mjs"
-      - "tsconfig.json"
-      - ".npmrc"
-      - ".github/workflows/ci.yml"
-  workflow_dispatch:
+    branches: [main, master]
 
-concurrency:
-  group: frontend-ci-${{ github.ref }}
-  cancel-in-progress: true
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: Type-check + Build
+  # -----------------------------------------------------------------------
+  # Soroban contract: build to wasm + run unit tests
+  # -----------------------------------------------------------------------
+  contract:
+    name: contract (build + test)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/auction
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v5
+      - name: Install system build dependencies
+        # stellar-cli transitively pulls in crates (notify-rust,
+        # ledger-apdu -> hidapi, ...) that need libdbus, libudev, and
+        # pkg-config at build time on Linux runners.
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libdbus-1-dev libudev-dev pkg-config
+
+      - name: Install Rust toolchain (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry & target
+        uses: actions/cache@v4
         with:
-          node-version: 22
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            contracts/auction/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('contracts/auction/Cargo.lock', 'contracts/auction/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install stellar CLI
+        run: |
+          set -euo pipefail
+          if ! command -v stellar >/dev/null 2>&1; then
+            cargo install --locked stellar-cli
+          else
+            echo "stellar CLI already present: $(stellar --version | head -n1)"
+          fi
+
+      - name: Add wasm32 target
+        run: rustup target add wasm32v1-none
+
+      - name: Run contract unit tests
+        run: cargo test --locked
+
+      - name: Build contract wasm
+        run: stellar contract build
+
+      - name: Upload wasm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auction-wasm
+          path: contracts/auction/target/wasm32v1-none/release/auction.wasm
+          if-no-files-found: error
+          retention-days: 14
+
+  # -----------------------------------------------------------------------
+  # Web app: install + typecheck + lint + build
+  # -----------------------------------------------------------------------
+  web:
+    name: web (typecheck + lint + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
           cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Type-check (tsc --noEmit)
-        run: npx tsc --noEmit
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
 
       - name: Build
         run: npm run build
@@ -70,11 +100,3 @@ jobs:
           NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
           NEXT_PUBLIC_RPC_URL: https://soroban-testnet.stellar.org
           NEXT_PUBLIC_HORIZON_URL: https://horizon-testnet.stellar.org
-
-      - name: Upload .next artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: next-build
-          path: .next/
-          if-no-files-found: warn
-          retention-days: 3
