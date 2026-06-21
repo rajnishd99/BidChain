@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useTransactions } from "@/hooks/useTransaction";
 import { useWallet } from "@/hooks/useWallet";
 import { config } from "@/lib/config";
+import { nativeXlmSac } from "@/lib/tokens";
 import {
   ContractCallError,
   describeContractError,
@@ -18,7 +19,6 @@ export function CreateAuctionForm() {
   const { submit } = useTransactions();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [token, setToken] = useState(config.defaultTokenAddress);
   const [reserve, setReserve] = useState("100");
   const [starting, setStarting] = useState("50");
   const [duration, setDuration] = useState("300");
@@ -49,7 +49,7 @@ export function CreateAuctionForm() {
         "create_auction",
         [
           { name: "seller", value: wallet.publicKey },
-          { name: "token", value: token },
+          { name: "token", value: nativeXlmSac(config.network) },
           { name: "title", value: title.toUpperCase().replace(/\s+/g, "_").slice(0, 28) || "AUCTION" },
           { name: "description", value: description.toUpperCase().replace(/\s+/g, "_").slice(0, 28) || "NONE" },
           { name: "reserve_price", value: reserve },
@@ -108,16 +108,6 @@ export function CreateAuctionForm() {
           onChange={(e) => setDescription(e.target.value)}
           maxLength={28}
           placeholder="Genesis edition"
-        />
-      </label>
-      <label>
-        Settlement token (SAC address)
-        <input
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          required
-          spellCheck={false}
-          placeholder="C… (Stellar Asset Contract)"
         />
       </label>
       <div className="form-row">

@@ -54,8 +54,6 @@ export const config = {
     process.env.NEXT_PUBLIC_CONTRACT_ID ??
     process.env.NEXT_PUBLIC_AUCTION_CONTRACT_ID ??
     "",
-  defaultTokenAddress:
-    process.env.NEXT_PUBLIC_DEFAULT_TOKEN_ADDRESS ?? "",
 } as const;
 
 export const isConfigured = (): boolean =>
