@@ -1,24 +1,48 @@
-# Frontend CI: lint, type-check, and build the Next.js app on every
-# push/PR to main.
+# Frontend CI — runs on every push to main and every PR.
 #
-# Per spec §8: trigger on push/PR, checkout, setup Node, install
-# deps, lint, type-check, build, and test (no tests yet — placeholder
-# step left in for future expansion).
+# Pipeline: checkout → setup-pnpm → setup-node → install → type-check
+# → build → upload .next artifact.
+#
+# Triggers: only on changes that affect the front-end (src/, scripts/,
+# package.json, pnpm-lock.yaml, the workflow file, or the Next.js
+# config). Contract changes are handled by contracts.yml.
 
 name: Frontend CI
 
 on:
   push:
     branches: [main]
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "next.config.mjs"
+      - "tsconfig.json"
+      - ".npmrc"
+      - ".github/workflows/ci.yml"
   pull_request:
     branches: [main]
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "next.config.mjs"
+      - "tsconfig.json"
+      - ".npmrc"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: frontend-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
+    name: Type-check + Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -39,7 +63,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Type-check
+      - name: Type-check (tsc --noEmit)
         run: pnpm exec tsc --noEmit
 
       - name: Build
@@ -50,6 +74,10 @@ jobs:
           NEXT_PUBLIC_RPC_URL: https://soroban-testnet.stellar.org
           NEXT_PUBLIC_HORIZON_URL: https://horizon-testnet.stellar.org
 
-      - name: Test
-        run: echo "no frontend tests yet"
-        continue-on-error: true
+      - name: Upload .next artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-build
+          path: .next/
+          if-no-files-found: warn
+          retention-days: 3

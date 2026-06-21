@@ -1,9 +1,14 @@
-# Contracts CI: build, test, and produce optimised WASM for every
-# push/PR that touches `contracts/**` (or main).
+# Contracts CI — runs on every push to main and every PR that touches
+# the Rust workspace.
 #
-# Per spec §8: cache Cargo registry, install wasm32 target, run
-# `cargo build --release` + `cargo test`, and run `stellar contract
-# build` to produce the deployable WASM.
+# Pipeline: checkout → install Rust toolchain → cache Cargo target →
+# install stellar-cli + wasm32 target → cargo test (release) →
+# stellar contract build → verify the produced .wasm → upload as an
+# artifact.
+#
+# Triggers: only on changes that affect the contracts (contracts/**,
+# Cargo.toml, Cargo.lock, or the workflow file). Frontend changes are
+# handled by ci.yml.
 
 name: Contracts CI
 
@@ -22,13 +27,15 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/contracts.yml"
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: contracts-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
+    name: Test + Build WASM
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -37,6 +44,8 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
 
       - name: Cache Cargo registry & target
         uses: actions/cache@v4
@@ -49,23 +58,40 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Install Stellar CLI
+      - name: Install stellar CLI
         run: |
-          cargo install --locked stellar-cli --features opt
+          set -euo pipefail
+          if ! command -v stellar >/dev/null 2>&1; then
+            cargo install --locked stellar-cli --features opt
+          else
+            echo "stellar CLI already present: $(stellar --version | head -n1)"
+          fi
 
       - name: Add wasm32v1-none target
         run: rustup target add wasm32v1-none
 
-      - name: cargo build --release
-        run: cargo build --release
-
-      - name: cargo test
-        run: cargo test --release --all
+      - name: cargo test (release)
+        run: cargo test --release --workspace --all-targets
 
       - name: stellar contract build
-        working-directory: contracts
         run: stellar contract build
+        working-directory: contracts
 
       - name: Verify WASM output
         run: |
+          set -euo pipefail
           ls -l target/wasm32v1-none/release/*.wasm
+          # Quick sanity: every exported function in the WASM is
+          # a real auction entry point.
+          stellar contract info interface \
+            --wasm target/wasm32v1-none/release/auction.wasm \
+            --output json > /tmp/auction.abi.json
+          python3 -c "import json,sys; abi=json.load(open('/tmp/auction.abi.json')); funcs={e['function_v0']['name'] for e in abi if 'function_v0' in e}; expected={'__constructor','create_auction','bid','settle','get_auction','list_auctions','get_reputation'}; missing=expected-funcs; assert not missing, f'missing exported functions: {missing}'; print('exported functions OK:', sorted(funcs))"
+
+      - name: Upload WASM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auction-wasm
+          path: target/wasm32v1-none/release/auction.wasm
+          if-no-files-found: error
+          retention-days: 7
