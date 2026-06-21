@@ -8,8 +8,8 @@ React 19 frontend.
 
 ## Submission Checklist (fill before submitting)
 
-- Live demo link: `[TBD — Vercel/Netlify URL]`
-- Demo video (1 minute) link: `[TBD]`
+- Live demo link: https://bid-chain.vercel.app/
+- Demo video link: https://drive.google.com/file/d/1iF0Lv9PZarlLz7wRZ4jUydp0fF5ULIrX/view?usp=sharing
 - Test output screenshot (3+ passing tests): ✅ (see `cargo test` output below)
 - Public GitHub repo link: `https://github.com/rajnishd99/BidChain`
 - 3+ meaningful commits for Level 3: ✅
@@ -50,21 +50,25 @@ This project demonstrates:
   <tr>
     <td align="center" width="50%">
       <strong>🏠 Home Feed</strong><br/><br/>
-      <em>[Screenshot placeholder — live auction feed]</em>
+      <em><img width="2032" height="1161" alt="image" src="https://github.com/user-attachments/assets/5c74bea5-4e1d-40c3-bc44-553ba1716b7e" />
+</em>
     </td>
     <td align="center" width="50%">
       <strong>🔌 Wallet Kit</strong><br/><br/>
-      <em>[Screenshot placeholder — Stellar Wallets Kit modal]</em>
+      <em><img width="2032" height="1161" alt="Screenshot 2026-06-21 at 11 55 04 AM" src="https://github.com/user-attachments/assets/d0ea48ba-c0aa-4648-9ca9-9f6f2811f035" />
+</em>
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
       <strong>💸 Bid Panel</strong><br/><br/>
-      <em>[Screenshot placeholder — bid transaction lifecycle]</em>
+      <em><img width="2032" height="1161" alt="image" src="https://github.com/user-attachments/assets/0fe0567f-604f-489b-a45f-0f85086f27ff" />
+</em>
     </td>
     <td align="center" width="50%">
       <strong>✅ CI Results</strong><br/><br/>
-      <em>[Screenshot placeholder — GitHub Actions green run]</em>
+      <em><img width="2032" height="1161" alt="image" src="https://github.com/user-attachments/assets/b5c94dcb-995f-4c16-9493-192d2888133e" />
+</em>
     </td>
   </tr>
 </table>
@@ -72,7 +76,8 @@ This project demonstrates:
 ## Mobile responsive screenshot
 
 <div align="center">
-<em>[Screenshot placeholder — 375 px mobile view of the auction feed]</em>
+<em><img width="453" height="936" alt="image" src="https://github.com/user-attachments/assets/1f65b190-e463-49da-a768-3aefb5d6c010" />
+</em>
 </div>
 
 ## Deployed Contract
@@ -81,17 +86,8 @@ This project demonstrates:
 - **Contract id:** `CDWOHA6LLJE53RYNOJBWQ4GV7FLHF56JL2C35CB55SG7ANYGISV7FPUO`
 - **WASM hash:** `aad38720ba804358c62f281a1951e0177bc5d5ea344b69f8b03ce2b02d8c978f`
 - **Deployed at:** `2026-06-21T03:46:34Z`
-- **Source account:** `[TBD — deployer identity]`
 - **Stellar Lab:** <https://lab.stellar.org/r/testnet/contract/CDWOHA6LLJE53RYNOJBWQ4GV7FLHF56JL2C35CB55SG7ANYGISV7FPUO>
 - **Soroban RPC:** `https://soroban-testnet.stellar.org`
-- **Default settlement asset (native XLM SAC on testnet):** `[TBD — set via NEXT_PUBLIC_DEFAULT_TOKEN_ADDRESS]`
-
-## Verifiable Contract Calls
-
-- **Upload tx hash:** `[TBD]`
-- **Deploy tx hash:** `[TBD]`
-- **Deployed at:** `2026-06-21T03:46:34Z`
-- **Stellar Expert (deploy):** `[TBD]`
 
 Full deployment record (contract id, WASM hash, timestamps) lives in
 [`deployments/testnet.json`](deployments/testnet.json) and is refreshed by
