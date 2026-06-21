@@ -120,19 +120,50 @@ async function awaitTransaction(
     }
     if (resp.status === "FAILED") {
       const failed = resp as rpc.Api.GetFailedTransactionResponse;
-      // The SDK exposes the failure reason in different shapes
-      // depending on the version; try a few known locations.
-      const result: unknown =
-        (failed as { result?: unknown }).result ??
-        (failed as { resultXdr?: unknown }).resultXdr ??
-        (failed as { resultMetaXdr?: unknown }).resultMetaXdr;
-      throw new ContractCallError(
-        `Transaction ${hash} failed: ${String(result)}`,
-      );
+      const { code, detail } = extractContractError(failed);
+      const message = code != null
+        ? `Contract error #${code}: ${detail}`
+        : `Transaction ${hash} failed: ${detail}`;
+      throw new ContractCallError(message, code);
     }
     if (Date.now() - start > timeoutMs) {
       throw new ContractCallError(`Transaction ${hash} timed out`);
     }
     await new Promise((r) => setTimeout(r, intervalMs));
   }
+}
+
+/**
+ * Pull a contract error code out of a failed-transaction response.
+ *
+ * The SDK exposes the failure reason in different shapes depending
+ * on version (and whether resultXdr / resultMetaXdr is set), so we
+ * try a few known locations and decode the first one that looks
+ * like `Error(Contract, #N)`. Returns `{ code, detail }` where
+ * `code` is the numeric contract error (or null if not found) and
+ * `detail` is the raw failure string for the message body.
+ */
+function extractContractError(
+  failed: rpc.Api.GetFailedTransactionResponse,
+): { code: number | null; detail: string } {
+  const result: unknown =
+    (failed as { result?: unknown }).result ??
+    (failed as { resultXdr?: unknown }).resultXdr ??
+    (failed as { resultMetaXdr?: unknown }).resultMetaXdr;
+  const detail = String(result);
+  // Match the most common shape: `Error(Contract, #9)`.
+  const m = detail.match(/Error\(Contract,\s*#(\d+)\)/);
+  if (m) {
+    const n = Number(m[1]);
+    if (Number.isFinite(n)) return { code: n, detail };
+  }
+  // Match the alternate shape produced by some SDK versions:
+  // `HostError: Error(Contract, #9) ...` — already covered above.
+  // Fallback: try to pull any `#N` out of the string.
+  const m2 = detail.match(/#(\d+)/);
+  if (m2) {
+    const n = Number(m2[1]);
+    if (Number.isFinite(n)) return { code: n, detail };
+  }
+  return { code: null, detail };
 }

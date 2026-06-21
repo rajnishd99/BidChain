@@ -12,6 +12,13 @@ import {
 } from "@/lib/contract";
 import { type AuctionEvent } from "@/lib/events";
 
+
+function toBigInt(v: string | number | bigint | null | undefined): bigint {
+  if (typeof v === "bigint") return v;
+  if (v == null || v === "") return 0n;
+  return BigInt(v as string | number);
+}
+
 const shorten = (pk: string) => `${pk.slice(0, 6)}…${pk.slice(-4)}`;
 
 export function BidPanel({
@@ -24,13 +31,16 @@ export function BidPanel({
   const { wallet } = useWallet();
   const { submit } = useTransactions();
   const [amount, setAmount] = useState<string>(() => {
-    // `scValToNative` returns BigInts for i128 fields; the read
-    // layer normalises them to strings, but be defensive: handle
-    // both string and bigint at the boundary.
-    const current = auction.highest_bid || auction.starting_price;
-    const base =
-      typeof current === "bigint" ? current : BigInt(String(current));
-    return (base + 10n).toString();
+    // Suggested next bid = current highest + 1 stroop, or the
+    // starting price + 1 if no bids yet. The fallback must be
+    // explicit: `"0" || starting_price` returns `"0"` because
+    // non-empty strings are truthy in JS, which would suggest a
+    // bid below the reserve and get rejected by the contract
+    // (ContractError::FirstBidBelowStartingPrice, code 9).
+    const highest = toBigInt(auction.highest_bid);
+    const starting = toBigInt(auction.starting_price);
+    const base = highest > 0n ? highest + 1n : starting + 1n;
+    return base.toString();
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
