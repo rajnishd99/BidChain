@@ -1,0 +1,22 @@
+# Node
+node_modules/
+.pnpm-store/
+.next/
+out/
+dist/
+
+# Rust / Soroban
+target/
+Cargo.lock
+**/*.rs.bk
+
+# OS
+.DS_Store
+
+# Env
+.env
+.env.local
+
+# Build artifacts
+deployments/
+abi/
