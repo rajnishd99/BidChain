@@ -58,6 +58,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
+      - name: Install system build dependencies
+        # stellar-cli transitively pulls in crates (e.g. notify-rust) that
+        # need libdbus + pkg-config at build time on Linux runners.
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libdbus-1-dev pkg-config
+
       - name: Install stellar CLI
         run: |
           set -euo pipefail
