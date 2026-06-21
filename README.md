@@ -1,131 +1,255 @@
 # BidChain
 
-BidChain is a decentralized, real-time auction marketplace powered by
-**Soroban smart contracts** on the Stellar network. Sellers create
-auctions for any Stellar Asset Contract (XLM or any issued asset).
-Bidders place bids on-chain. When the auction ends, the highest bidder
-wins and the seller is paid automatically by the contract — no
-off-chain settlement step.
+BidChain is a mini end-to-end Stellar + Soroban dApp: a sealed-bid
+auction marketplace backed by a deployed Soroban smart contract on
+Stellar Testnet, with live bid streaming driven by periodic on-chain
+reads, transaction lifecycle feedback, and a clean Next.js 16 /
+React 19 frontend.
 
----
+## Submission Checklist (fill before submitting)
+
+- Live demo link: `[TBD — Vercel/Netlify URL]`
+- Demo video (1 minute) link: `[TBD]`
+- Test output screenshot (3+ passing tests): ✅ (see `cargo test` output below)
+- Public GitHub repo link: `https://github.com/rajnishd99/BidChain`
+- 3+ meaningful commits for Level 3: ✅
+
+## Submission Overview
+
+This project demonstrates:
+
+- **Soroban smart contract** for `create_auction` / `bid` / `settle` / `get_auction` / `list_auctions` / `get_reputation`
+- Contract deployment on **Stellar Testnet** via the official `stellar` CLI
+- Contract reads and writes from a typed Next.js frontend
+- **Live bid updates**: per-auction highest-bid and time-remaining recomputed every 5 s from the contract
+- **Multi-wallet integration** with `StellarWalletsKit` (Freighter, Albedo, xBull, Lobstr, Hot Wallet, …)
+- **Visible transaction lifecycle** feedback in the bid / create flows
+- Wallet error handling for missing wallet, rejected signature, and unfunded accounts
+- **Automatic refunds** of the previous leader on every new bid
+- **Seller payout** on successful `settle`, **bidder refund** on a failed auction
+- **Anti-snipe extension** when a bid lands close to the end time
+- **On-chain reputation** counters (`auctions_created`, `bids_placed`, `auctions_won_as_seller`, `auctions_won_as_bidder`)
+- Loading states and progress indicators during reads / writes
+- TypeScript strict mode and a CI workflow (`typecheck` + `build` on the web app, `test` + WASM build on the contract)
+
+## Key Features
+
+- Anyone can create an auction with a reserve price, starting price, duration, and anti-snipe settings
+- Anyone can bid — funds are held by the contract, not the seller
+- Bids must be strictly greater than the current highest bid; the first bid must be ≥ the starting price
+- The previous leader is automatically refunded in the same transaction as a new bid
+- When the timer ends, anyone can call `settle()` — the seller is paid if the reserve was met, otherwise the highest bidder is refunded
+- Bidding near the end of an auction extends the end time (`anti_snipe_window` / `anti_snipe_extension`)
+- Live status bar per auction and a 5-second auto-refresh on the home feed
+- Read-only browsing of auctions works even without a connected wallet
+- Wallet errors are surfaced inline; no silent failures
+
+## Screenshots
+
+<table width="100%">
+  <tr>
+    <td align="center" width="50%">
+      <strong>🏠 Home Feed</strong><br/><br/>
+      <em>[Screenshot placeholder — live auction feed]</em>
+    </td>
+    <td align="center" width="50%">
+      <strong>🔌 Wallet Kit</strong><br/><br/>
+      <em>[Screenshot placeholder — Stellar Wallets Kit modal]</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>💸 Bid Panel</strong><br/><br/>
+      <em>[Screenshot placeholder — bid transaction lifecycle]</em>
+    </td>
+    <td align="center" width="50%">
+      <strong>✅ CI Results</strong><br/><br/>
+      <em>[Screenshot placeholder — GitHub Actions green run]</em>
+    </td>
+  </tr>
+</table>
+
+## Mobile responsive screenshot
+
+<div align="center">
+<em>[Screenshot placeholder — 375 px mobile view of the auction feed]</em>
+</div>
+
+## Deployed Contract
+
+- **Network:** `Stellar Testnet`
+- **Contract id:** `CDWOHA6LLJE53RYNOJBWQ4GV7FLHF56JL2C35CB55SG7ANYGISV7FPUO`
+- **WASM hash:** `aad38720ba804358c62f281a1951e0177bc5d5ea344b69f8b03ce2b02d8c978f`
+- **Deployed at:** `2026-06-21T03:46:34Z`
+- **Source account:** `[TBD — deployer identity]`
+- **Stellar Lab:** <https://lab.stellar.org/r/testnet/contract/CDWOHA6LLJE53RYNOJBWQ4GV7FLHF56JL2C35CB55SG7ANYGISV7FPUO>
+- **Soroban RPC:** `https://soroban-testnet.stellar.org`
+- **Default settlement asset (native XLM SAC on testnet):** `[TBD — set via NEXT_PUBLIC_DEFAULT_TOKEN_ADDRESS]`
+
+## Verifiable Contract Calls
+
+- **Upload tx hash:** `[TBD]`
+- **Deploy tx hash:** `[TBD]`
+- **Deployed at:** `2026-06-21T03:46:34Z`
+- **Stellar Expert (deploy):** `[TBD]`
+
+Full deployment record (contract id, WASM hash, timestamps) lives in
+[`deployments/testnet.json`](deployments/testnet.json) and is refreshed by
+`make deploy`.
 
 ## Live Demo
 
-[Live demo link — Vercel/Netlify/etc.](https://bidchain.example.com)
+`[TBD — deployed URL]`
 
-## Contract Deployment
+## Setup
 
-- **Network:** testnet
-- **Contract Address:** `CDWOHA6LLJE53RYNOJBWQ4GV7FLHF56JL2C35CB55SG7ANYGISV7FPUO`
-- **WASM Hash:** `aad38720ba804358c62f281a1951e0177bc5d5ea344b69f8b03ce2b02d8c978f`
-- **Sample Transaction Hash:** [`6f3e662a5f03642ca850d6db905a73f3f54bdc69cd7276a45ee50a13d5b052e6`](https://stellar.expert/explorer/testnet/tx/6f3e662a5f03642ca850d6db905a73f3f54bdc69cd7276a45ee50a13d5b052e6) (contract deploy on testnet)
-
-A deploy record (with the latest wasm hash) is also written to
-`deployments/<network>.json` on every `make deploy` run.
-
----
-
-## Features
-
-- **Create auctions** with starting price, reserve price, duration, and anti-snipe settings.
-- **Live bidding** — bids are submitted as Soroban contract calls, signed with [Stellar Wallets Kit](https://github.com/creit-tech/stellar-wallets-kit) (Freighter, Albedo, xBull, Lobstr, Hot wallet, …).
-- **Real-time updates** — the front-end subscribes to contract events via Soroban RPC `getEvents` polling and renders new bids as they appear.
-- **Automatic settlement** — after the timer ends, anyone can call `settle()` to pay the seller (or refund the highest bidder if the reserve was not met).
-- **Bid refunds** — when a new bid arrives, the previous leader is refunded automatically in the same transaction.
-- **Anti-sniping** — bids placed within `anti_snipe_window` of the end time extend the auction.
-- **On-chain reputation** — `auctions_created`, `bids_placed`, and `won` counters tracked per user.
-- **Transaction status tracking** — every submitted transaction moves through `idle → pending → success | failed`, surfaced as toasts and a history list with a link to the Stellar explorer.
-- **Native balance display + network-mismatch detection** in the wallet button.
-- **Error boundary** around wallet and contract components.
-- **Mobile-responsive UI** verified at 375 / 480 / 768 / 1024 / 1200 px breakpoints.
-
----
-
-## Tech Stack
-
-- **Frontend:** Next.js 16 (App Router), React 19, TypeScript (strict)
-- **Wallet:** [@creit.tech/stellar-wallets-kit](https://github.com/creit-tech/stellar-wallets-kit) 2.x
-- **Chain SDK:** [@stellar/stellar-sdk](https://github.com/Stellar/stellar-js) 16.x
-- **Contracts:** Rust + [soroban-sdk](https://github.com/Stellar/soroban-sdk) 25.x
-- **CI/CD:** GitHub Actions (`.github/workflows/ci.yml`, `contracts.yml`)
-- **Package manager:** pnpm
-
-See `Requirements.md` for the full specification this project follows.
-
----
-
-## Getting Started
+Run all commands from the **repo root** unless stated otherwise.
 
 ### Prerequisites
 
-- **Node.js** ≥ 20
-- **pnpm** ≥ 9 (`npm install -g pnpm`)
+- **Node.js** `^20.19.0` or `>=22.12.0` (Next 16 requirement)
+- **npm** ≥ 10 (the project ships a `package-lock.json`; CI uses `npm ci`)
 - **Rust** stable with the `wasm32v1-none` target
   ```bash
   rustup target add wasm32v1-none
   ```
-- **Stellar CLI** ≥ 23
+- **Stellar CLI** ≥ 23 (only required for `make deploy` / `make abi` / `make optimize`)
   ```bash
-  cargo install --locked stellar-cli --features opt
+  cargo install --locked stellar-cli
   ```
-  or grab a release from <https://github.com/stellar/stellar-cli/releases>
 
-### Install
+### 1. Install
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/rajnishd99/BidChain
 cd bidchain
-pnpm install
+npm install
 ```
 
-### Environment Variables
+### 2. Environment
 
-Copy `.env.example` to `.env` and fill in the values. The minimum required
-keys (consumed by the Next.js front-end) are:
+Copy `.env.example` to `.env`. The minimum keys consumed by the
+front-end at build time are:
 
-```
+```env
 NEXT_PUBLIC_STELLAR_NETWORK=testnet
+NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
 NEXT_PUBLIC_RPC_URL=https://soroban-testnet.stellar.org
-NEXT_PUBLIC_CONTRACT_ID=
 NEXT_PUBLIC_HORIZON_URL=https://horizon-testnet.stellar.org
+NEXT_PUBLIC_CONTRACT_ID=CDWOHA6LLJE53RYNOJBWQ4GV7FLHF56JL2C35CB55SG7ANYGISV7FPUO
 ```
 
-`STELLAR_SOURCE`, `STELLAR_RPC_URL`, and `STELLAR_NETWORK_PASSPHRASE`
-are read by the deploy / bind scripts (server-side only).
+Server-side keys (`STELLAR_SOURCE`, `STELLAR_RPC_URL`,
+`STELLAR_NETWORK_PASSPHRASE`) are read by the deploy / bind scripts
+and must **not** be exposed to the browser.
 
-### Build & deploy the contract
+### 3. Build & deploy the contract (optional, for redeploys)
 
 ```bash
-make identity      # create & fund a 'deployer' identity on testnet
-./scripts/build.sh # or `make build`
-./scripts/deploy.sh testnet   # or `make deploy`
-./scripts/init.sh   testnet   # no-op for the auction contract
+make identity        # create & fund a 'deployer' identity on testnet
+make build           # build the WASM
+make deploy          # deploy to testnet, write deployments/testnet.json
 ```
 
 `make deploy` writes the contract id to `deployments/testnet.json`
 and `abi/auction.abi.json`. Copy the contract id into
 `NEXT_PUBLIC_CONTRACT_ID` in `.env`.
 
-### Run the front-end
+### 4. Start the front-end
 
 ```bash
-make frontend-dev  # pnpm dev → http://localhost:3000
+make frontend-dev    # next dev → http://localhost:3000
 ```
 
-### Run tests
+### 5. Build for production
 
 ```bash
-make test         # cargo test (Soroban contract tests)
+make frontend        # next build
 ```
 
----
+## Tests
+
+Run the contract unit tests (3+ tests pass; required for the Level 3
+submission screenshot):
+
+```bash
+cd contracts/auction
+cargo test --release
+```
+
+Latest local run:
+
+```
+test test::test_invalid_create_auction_params ... ok
+test test::test_settle_before_end_rejected ... ok
+test test::test_seller_cannot_bid_on_own_auction ... ok
+test test::test_bid_below_starting_price_rejected ... ok
+test test::test_bid_must_increase ... ok
+test test::test_anti_snipe_extension ... ok
+test test::test_settle_below_reserve_refunds_bidder ... ok
+test test::test_reputation_updates ... ok
+test test::test_list_auctions ... ok
+test test::test_create_and_bid_flow ... ok
+test test::test_settle_meets_reserve_pays_seller ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+```
+
+Front-end typecheck:
+
+```bash
+npm run typecheck    # tsc --noEmit
+```
+
+## Testnet Notes
+
+- A connected wallet must be funded on Stellar Testnet before it can send contract transactions
+- If a wallet has not been created on Testnet yet, fund it with Friendbot first and then retry
+- The home feed works without a connected wallet (it just calls `list_auctions` as a read)
+
+## Scripts
+
+Run from the **repo root** (or use the equivalent `make` target):
+
+- `npm run dev` / `make frontend-dev` — start the Next.js dev server
+- `npm run build` / `make frontend` — production build of the web app
+- `npm run start` — start the built Next.js server
+- `npm run typecheck` — run `tsc --noEmit` on the web app
+- `make identity` — create & fund a `deployer` identity on testnet
+- `make build` — build the Soroban contract WASM
+- `make test` — run the Soroban contract tests
+- `make abi` — dump the contract ABI to `abi/auction.abi.json`
+- `make deploy` — deploy the contract to testnet and write `deployments/testnet.json`
+- `make invoke FN=<name> ARGS='...'` — invoke a contract function
+- `make bind` — regenerate the TS bindings from the deployed WASM
+- `make optimize` — build the WASM with `--optimize` (smaller)
+
+## Deploy (Vercel / Netlify)
+
+This is a standard Next.js 16 build.
+
+- **Node.js:** `^20.19.0` or `>=22.12.0` (Next 16 requirement)
+- **Build command:** `npm run build`
+- **Output directory:** `.next` (Next.js default; Vercel picks this up automatically)
+- **Env vars:** set the `NEXT_PUBLIC_*` vars from the **Setup → Environment** section (at minimum `NEXT_PUBLIC_CONTRACT_ID` if you point the build at a freshly-deployed contract)
+
+## Demo Video (1 minute)
+
+`[TBD — 1-minute walkthrough link]`
+
+Suggested walkthrough:
+
+1. Open the deployed site and show the auction feed refreshing every 5 s.
+2. Connect a wallet (Freighter or any wallet listed in the modal).
+3. Create an auction (show the transaction phases: `preparing` → `awaiting-signature` → `pending` → `success`).
+4. Bid on the auction from a second wallet and show the previous leader being refunded.
+5. Open the contract on Stellar Lab via the link in the UI.
 
 ## Project Structure
 
 ```
 bidchain/
-├── app/                        # (N/A: Next.js lives in src/app)
-├── src/                        # Next.js app
+├── src/                        # Next.js 16 frontend (React 19, App Router)
 │   ├── app/                    # pages (home, auctions, create, profile)
 │   ├── components/             # UI: wallet, bid panel, form, …
 │   │   └── system/             # ErrorBoundary, TxToasts
@@ -143,113 +267,28 @@ bidchain/
 │   │   ├── errors.rs           # ContractError enum
 │   │   └── test.rs             # Unit + integration tests
 │   └── Cargo.toml
-├── scripts/
-│   ├── build.sh                # build all contracts to optimised WASM
-│   ├── deploy.sh               # deploy to testnet/mainnet
-│   ├── init.sh                 # post-deploy init (no-op for auction)
-│   ├── deploy.ts               # TS deploy (used by `make deploy`)
-│   └── bind.ts                 # regenerate TS bindings
-├── .github/workflows/
-│   ├── ci.yml                  # frontend lint/type-check/build
-│   └── contracts.yml           # contract build/test/wasm
-├── abi/                        # JSON ABI (created on deploy)
+├── scripts/                    # build.sh / deploy.sh / init.sh + TS equivalents
+├── docs/
+│   └── CONTRACT.md             # full contract API + error/event reference
+├── abi/                        # generated JSON ABI
 ├── deployments/                # <network>.json (created on deploy)
+├── .github/workflows/ci.yml    # CI: typecheck + build (web), test + WASM (contracts)
 ├── Cargo.toml                  # Soroban workspace
 ├── package.json                # Next.js + scripts deps
 └── Makefile                    # convenience targets
 ```
 
----
+## CI
 
-## Smart Contract API
+GitHub Actions runs on every push / PR to `main` / `master`
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
 
-Defined in `contracts/auction/src/lib.rs`.
+- **`web`** — `npm ci` → `npm run typecheck` → `npm run build`
+- **`contracts`** — `cargo test --release` → `cargo rustc --target wasm32v1-none --release` (uploads the WASM to the `target/` directory inside the runner)
 
-### Storage
+## Additional Docs
 
-- `NextAuctionId: u64` — monotonic counter
-- `Auction(id) -> Auction` — per-auction state
-- `AllAuctions: Vec<u64>` — list of all ids (for easy listing)
-- `Reputation(Address) -> Reputation` — per-user counters
-
-### Functions
-
-| Function | Auth | Returns | Purpose |
-| --- | --- | --- | --- |
-| `__constructor()` | – | – | Initialise the counter. |
-| `create_auction(seller, token, title, desc, reserve, start, duration, anti_snipe_window, anti_snipe_extension)` | seller | `Result<u64, ContractError>` | Create a new auction; returns the new id. |
-| `bid(auction_id, bidder, amount)` | bidder | `Result<(), ContractError>` | Place a bid; refunds the previous leader; extends on anti-snipe. |
-| `settle(auction_id)` | – | `Result<(), ContractError>` | After end, pay seller (or refund bidder if reserve not met). |
-| `get_auction(auction_id)` | – | `Option<Auction>` | View an auction. |
-| `list_auctions()` | – | `Vec<u64>` | View all auction ids. |
-| `get_reputation(user)` | – | `Reputation` | View reputation counters. |
-
-### Errors
-
-Every entry point that handles user input returns
-`Result<T, ContractError>` (see `contracts/auction/src/errors.rs`).
-The front-end mirrors these codes in
-`src/lib/contract/errors.ts` and translates them to human-readable
-messages. Codes are stable; never renumber an existing variant.
-
-| Code | Variant |
-| --- | --- |
-| 1 | `InvalidDuration` |
-| 2 | `InvalidPrice` |
-| 3 | `AuctionNotFound` |
-| 4 | `AuctionAlreadySettled` |
-| 5 | `AuctionNotStarted` |
-| 6 | `AuctionEnded` |
-| 7 | `InvalidBidAmount` |
-| 8 | `BidNotHighEnough` |
-| 9 | `FirstBidBelowStartingPrice` |
-| 10 | `SellerCannotBid` |
-| 11 | `AuctionNotYetEnded` |
-
-### Events
-
-All events use the modern `#[contractevent]` macro so the topics are
-machine-readable and easy to index. The TS schema is mirrored in
-`src/lib/events/types.ts`.
-
-- `AuctionCreated { auction_id, seller, token, title, reserve_price, end_time }`
-- `BidPlaced { auction_id, bidder, amount, highest_bid, end_time }`
-- `BidRefunded { auction_id, bidder, amount }`
-- `AuctionExtended { auction_id, new_end_time, triggering_bidder, triggering_amount }`
-- `AuctionSettled { auction_id, winner, final_bid, seller, won }`
-
----
-
-## Screenshots
-
-### Mobile Responsive UI
-
-_Paste a 375 / 480 px mobile screenshot here._
-
-### Test Output (3+ passing tests)
-
-```
-test test::test_invalid_create_auction_params ... ok
-test test::test_settle_before_end_rejected ... ok
-test test::test_seller_cannot_bid_on_own_auction ... ok
-test test::test_bid_below_starting_price_rejected ... ok
-test test::test_anti_snipe_extension ... ok
-test test::test_bid_must_increase ... ok
-test test::test_settle_below_reserve_refunds_bidder ... ok
-test test::test_reputation_updates ... ok
-test test::test_list_auctions ... ok
-test test::test_create_and_bid_flow ... ok
-test test::test_settle_meets_reserve_pays_seller ... ok
-test result: ok. 11 passed; 0 failed
-```
-
----
-
-## Demo Video
-
-_[1–2 minute demo video link]_
-
----
+- [Contract API reference](./docs/CONTRACT.md) — full storage layout, function signatures, error codes, and event schema
 
 ## License
 
