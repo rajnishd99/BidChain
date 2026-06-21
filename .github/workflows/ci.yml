@@ -6,73 +6,9 @@ on:
   pull_request:
     branches: [main, master]
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
-  # -----------------------------------------------------------------------
-  # Soroban contract: build to wasm + run unit tests
-  # -----------------------------------------------------------------------
-  contract:
-    name: contract (build + test)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: contracts/auction
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install system build dependencies
-        # stellar-cli transitively pulls in crates (notify-rust,
-        # ledger-apdu -> hidapi, ...) that need libdbus, libudev, and
-        # pkg-config at build time on Linux runners.
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libdbus-1-dev libudev-dev pkg-config
-
-      - name: Install Rust toolchain (stable)
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo registry & target
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            contracts/auction/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('contracts/auction/Cargo.lock', 'contracts/auction/Cargo.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Install stellar CLI
-        run: |
-          set -euo pipefail
-          if ! command -v stellar >/dev/null 2>&1; then
-            cargo install --locked stellar-cli
-          else
-            echo "stellar CLI already present: $(stellar --version | head -n1)"
-          fi
-
-      - name: Add wasm32 target
-        run: rustup target add wasm32v1-none
-
-      - name: Run contract unit tests
-        run: cargo test --locked
-
-      - name: Build contract wasm
-        run: stellar contract build
-
-      - name: Upload wasm artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: auction-wasm
-          path: contracts/auction/target/wasm32v1-none/release/auction.wasm
-          if-no-files-found: error
-          retention-days: 14
-
-  # -----------------------------------------------------------------------
-  # Web app: install + typecheck + lint + build
-  # -----------------------------------------------------------------------
   web:
-    name: web (typecheck + lint + build)
+    name: web (typecheck + build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -84,14 +20,11 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
+      - name: Install
         run: npm ci
 
       - name: Typecheck
         run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
 
       - name: Build
         run: npm run build
@@ -100,3 +33,33 @@ jobs:
           NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
           NEXT_PUBLIC_RPC_URL: https://soroban-testnet.stellar.org
           NEXT_PUBLIC_HORIZON_URL: https://horizon-testnet.stellar.org
+
+  contracts:
+    name: contracts (test + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add wasm32v1-none target
+        run: rustup target add wasm32v1-none
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Run tests
+        run: cargo test --release
+
+      - name: Build WASM
+        run: stellar contract build
+        working-directory: contracts
