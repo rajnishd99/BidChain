@@ -1,0 +1,173 @@
+:root {
+  --bg: #0b0d10;
+  --panel: #14171c;
+  --panel-2: #1b1f25;
+  --border: #252a31;
+  --text: #e6e8eb;
+  --muted: #8a8f97;
+  --primary: #7b5cff;
+  --primary-2: #9b7cff;
+  --success: #2dd4bf;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+}
+
+* { box-sizing: border-box; }
+html, body { padding: 0; margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+a { color: inherit; text-decoration: none; }
+h1, h2, h3 { margin: 0; }
+button { font: inherit; cursor: pointer; }
+
+.app-shell { max-width: 1200px; margin: 0 auto; padding: 24px; }
+.app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; gap: 24px; }
+.app-header .brand { display: flex; align-items: center; gap: 12px; }
+.app-header .brand-mark { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--primary), var(--primary-2)); display: grid; place-items: center; font-weight: 700; }
+.app-header h1 { font-size: 22px; letter-spacing: 0.5px; }
+.app-header nav { display: flex; gap: 8px; }
+.app-header nav a { padding: 8px 12px; border-radius: 8px; color: var(--muted); }
+.app-header nav a:hover, .app-header nav a.active { background: var(--panel); color: var(--text); }
+
+.btn { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); padding: 10px 16px; border-radius: 10px; }
+.btn:hover { border-color: var(--primary); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-2)); border-color: transparent; color: #fff; }
+.btn-ghost { background: transparent; }
+.btn-small { padding: 4px 10px; font-size: 12px; }
+
+.hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px; align-items: start; }
+@media (max-width: 900px) { .hero { grid-template-columns: 1fr; } }
+.hero-copy h2 { font-size: 44px; line-height: 1.1; margin-bottom: 16px; }
+.hero-copy p { color: var(--muted); line-height: 1.5; }
+.hero-cta { display: flex; gap: 12px; margin-top: 24px; }
+.hero-flow { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+.hero-flow h3 { margin-bottom: 12px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.hero-flow ol { margin: 0; padding-left: 18px; line-height: 1.8; color: var(--text); }
+
+.section { margin-top: 48px; }
+.section h2 { margin-bottom: 16px; font-size: 24px; }
+.section .section-sub { color: var(--muted); margin-bottom: 24px; }
+
+.auction-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.auction-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; transition: border-color 0.15s, transform 0.15s; }
+.auction-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+.auction-card-header { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.auction-card-header h3 { font-size: 16px; }
+.auction-card-desc { color: var(--muted); font-size: 13px; margin: 0; }
+.auction-card-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; }
+.auction-card-stats > div { display: flex; justify-content: space-between; padding: 6px 10px; background: var(--panel-2); border-radius: 8px; }
+.auction-card-stats span { color: var(--muted); }
+.auction-card-status { padding: 6px 10px; border-radius: 8px; text-align: center; font-size: 12px; }
+.auction-card-status.won { background: rgba(45, 212, 191, 0.15); color: var(--success); }
+.auction-card-status.lost { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+
+.countdown { font-variant-numeric: tabular-nums; font-size: 14px; padding: 4px 8px; border-radius: 8px; background: var(--panel-2); }
+.countdown.ended { color: var(--muted); }
+
+.event-feed { display: flex; flex-direction: column; gap: 6px; max-height: 480px; overflow-y: auto; padding-right: 6px; }
+.event { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); font-size: 13px; }
+.event-tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--primary); color: #fff; text-transform: uppercase; letter-spacing: 0.5px; }
+.event-BidPlaced .event-tag { background: var(--success); }
+.event-AuctionSettled .event-tag { background: var(--warning); }
+.event-BidRefunded .event-tag { background: var(--danger); }
+.event-AuctionExtended .event-tag { background: var(--primary-2); }
+.event-empty { color: var(--muted); text-align: center; padding: 20px; }
+
+.bid-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+.bid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.bid-stats > div { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--panel-2); border-radius: 10px; }
+.stat-label { color: var(--muted); font-size: 12px; }
+.stat-value { font-weight: 600; font-size: 16px; }
+.bid-form { display: flex; gap: 10px; }
+.bid-form input { flex: 1; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; border-radius: 10px; }
+.bid-error { margin-top: 10px; color: var(--danger); font-size: 13px; }
+.settled-note { padding: 10px 12px; background: var(--panel-2); border-radius: 10px; }
+
+.wallet { display: flex; align-items: center; gap: 8px; }
+.wallet.connected { gap: 10px; }
+.wallet-pk { font-family: ui-monospace, "SF Mono", Menlo, monospace; padding: 6px 10px; background: var(--panel-2); border-radius: 8px; font-size: 12px; }
+.wallet-source { color: var(--muted); font-size: 11px; }
+.wallet-error { color: var(--danger); font-size: 12px; }
+
+.form { display: flex; flex-direction: column; gap: 14px; max-width: 520px; }
+.form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+.form input, .form textarea, .form select { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; border-radius: 10px; font: inherit; }
+.form .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.form .form-help { color: var(--muted); font-size: 12px; }
+.form .form-error { color: var(--danger); font-size: 13px; }
+.form .form-success { color: var(--success); font-size: 13px; }
+
+.detail-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; }
+@media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
+.detail-grid h2 { font-size: 28px; margin-bottom: 4px; }
+.detail-grid .subtitle { color: var(--muted); margin-bottom: 18px; }
+
+.banner { padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--panel); color: var(--muted); margin-bottom: 16px; }
+.banner.warning { border-color: var(--warning); background: rgba(245, 158, 11, 0.08); }
+
+/* -------------------- header / footer / wallet stack -------------------- */
+
+.app-header-right { display: flex; align-items: center; gap: 12px; }
+.app-network { font-size: 12px; color: var(--muted); font-family: ui-monospace, monospace; padding: 4px 8px; background: var(--panel-2); border-radius: 8px; }
+.app-footer { margin-top: 64px; padding: 24px 0; color: var(--muted); border-top: 1px solid var(--border); font-size: 13px; text-align: center; }
+
+.wallet-stack { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+.wallet-balance { color: var(--muted); font-size: 11px; }
+.wallet-warning { color: var(--warning); font-size: 11px; padding: 2px 6px; border: 1px solid var(--warning); border-radius: 6px; }
+
+/* -------------------- tx toasts -------------------- */
+
+.tx-toasts { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; max-width: 360px; z-index: 1000; }
+.tx-toast { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+.tx-toast-pending { border-color: var(--primary); }
+.tx-toast-success { border-color: var(--success); }
+.tx-toast-failed { border-color: var(--danger); }
+.tx-toast-label { font-weight: 600; display: block; }
+.tx-toast-status { display: inline-block; margin-top: 2px; padding: 1px 6px; border-radius: 999px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; background: var(--panel-2); color: var(--muted); }
+.tx-toast-pending .tx-toast-status { background: var(--primary); color: #fff; }
+.tx-toast-success .tx-toast-status { background: var(--success); color: #04221e; }
+.tx-toast-failed .tx-toast-status { background: var(--danger); color: #fff; }
+.tx-toast-error { color: var(--danger); font-size: 12px; margin-top: 4px; }
+.tx-toast-link { display: inline-block; margin-top: 4px; color: var(--primary-2); font-size: 12px; }
+.tx-toast-clear { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; border-radius: 8px; font-size: 11px; align-self: flex-end; }
+
+/* -------------------- responsive (per spec §11) -------------------- */
+
+/* Mobile-first: tighten paddings, collapse two-column grids, and
+   switch the header to a vertical stack on small screens. */
+
+@media (max-width: 1024px) {
+  .app-shell { padding: 20px; }
+  .hero-copy h2 { font-size: 36px; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .form .form-row { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .app-shell { padding: 16px; }
+  .app-header { flex-wrap: wrap; gap: 12px; }
+  .app-header nav { order: 3; width: 100%; justify-content: flex-start; }
+  .hero { grid-template-columns: 1fr; }
+  .hero-copy h2 { font-size: 30px; }
+  .section h2 { font-size: 20px; }
+  .auction-grid { grid-template-columns: 1fr; }
+  .bid-form { flex-direction: column; }
+  .bid-form input { width: 100%; }
+  .tx-toasts { left: 16px; right: 16px; bottom: 12px; max-width: none; }
+  .app-footer { font-size: 12px; }
+}
+
+@media (max-width: 480px) {
+  .app-shell { padding: 12px; }
+  .app-header h1 { font-size: 18px; }
+  .app-header nav a { padding: 6px 8px; font-size: 13px; }
+  .wallet { width: 100%; justify-content: flex-end; }
+  .wallet.connected { width: 100%; }
+  .wallet-stack { font-size: 12px; }
+  .hero-copy h2 { font-size: 26px; }
+  .hero-flow { padding: 14px; }
+  .auction-card { padding: 14px; }
+  .bid-panel { padding: 14px; }
+  .btn { padding: 8px 12px; font-size: 14px; }
+  .btn-primary { padding: 10px 14px; }
+  .event { font-size: 12px; padding: 6px 8px; }
+}
