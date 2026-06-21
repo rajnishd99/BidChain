@@ -54,7 +54,33 @@ export async function readContract<T = unknown>(
     );
   }
   if ("result" in sim && sim.result) {
-    return scValToNative(sim.result.retval) as T;
+    // `scValToNative` returns a `bigint` for i128 / i256 / u64 / etc.
+    // The bindings declare those fields as `string`, so coerce
+    // BigInts to decimal strings here. Without this, downstream
+    // code (e.g. BidPanel's useState default) can mix BigInts and
+    // numbers and throw a "Cannot mix BigInt and other types" error.
+    return bigintsToStrings(scValToNative(sim.result.retval)) as T;
   }
   return undefined as unknown as T;
+}
+
+/**
+ * Walk a decoded Soroban value and convert every `bigint` to a
+ * decimal string. This is a lossy round-trip for negative numbers
+ * (the leading "-" is preserved) but matches what the rest of the
+ * app expects for i128 / i256 / u64 fields. Object keys and array
+ * elements are walked recursively; non-BigInt values are left
+ * untouched.
+ */
+function bigintsToStrings(v: unknown): unknown {
+  if (typeof v === "bigint") return v.toString();
+  if (Array.isArray(v)) return v.map(bigintsToStrings);
+  if (v && typeof v === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      out[k] = bigintsToStrings(val);
+    }
+    return out;
+  }
+  return v;
 }

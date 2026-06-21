@@ -23,9 +23,15 @@ export function BidPanel({
 }) {
   const { wallet } = useWallet();
   const { submit } = useTransactions();
-  const [amount, setAmount] = useState<string>(
-    (BigInt(auction.highest_bid || auction.starting_price) + 10n).toString(),
-  );
+  const [amount, setAmount] = useState<string>(() => {
+    // `scValToNative` returns BigInts for i128 fields; the read
+    // layer normalises them to strings, but be defensive: handle
+    // both string and bigint at the boundary.
+    const current = auction.highest_bid || auction.starting_price;
+    const base =
+      typeof current === "bigint" ? current : BigInt(String(current));
+    return (base + 10n).toString();
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
