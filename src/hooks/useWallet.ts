@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { setKitHandle } from "@/lib/wallet/kit";
-import { resolveKitNetwork } from "@/lib/wallet/kit";
+import {
+  KitEventType,
+  StellarWalletsKit,
+  initWalletKit,
+  setKitHandle,
+} from "@/lib/wallet/kit";
 import { config } from "@/lib/config";
 
 export type WalletState = {
@@ -19,29 +23,100 @@ export type WalletState = {
   ready: boolean;
 };
 
+const initialWalletState: WalletState = {
+  publicKey: null,
+  walletId: null,
+  walletNetwork: null,
+  appNetwork: config.network,
+  networkMatches: true,
+  ready: false,
+};
+
+type WalletListener = () => void;
+let sharedWalletState: WalletState = initialWalletState;
+let sharedNativeBalance: string | null = null;
+const walletListeners = new Set<WalletListener>();
+let kitReady = false;
+let kitListenersBound = false;
+
+function emitWalletState() {
+  for (const listener of walletListeners) {
+    listener();
+  }
+}
+
+function patchWalletState(patch: Partial<WalletState>) {
+  sharedWalletState = { ...sharedWalletState, ...patch };
+  emitWalletState();
+}
+
+function setNativeBalance(balance: string | null) {
+  sharedNativeBalance = balance;
+  emitWalletState();
+}
+
+function subscribeWallet(listener: WalletListener): () => void {
+  walletListeners.add(listener);
+  return () => {
+    walletListeners.delete(listener);
+  };
+}
+
+async function ensureKitRuntime(): Promise<void> {
+  if (kitReady) {
+    return;
+  }
+
+  initWalletKit();
+  setKitHandle({
+    signTransaction: (xdr, opts) =>
+      StellarWalletsKit.signTransaction(xdr, {
+        networkPassphrase: opts?.networkPassphrase ?? config.networkPassphrase,
+        address: opts?.address,
+      }),
+  });
+
+  if (!kitListenersBound) {
+    kitListenersBound = true;
+    StellarWalletsKit.on(KitEventType.WALLET_SELECTED, (event) => {
+      patchWalletState({ walletId: event.payload.id ?? null });
+    });
+    StellarWalletsKit.on(KitEventType.STATE_UPDATED, (event) => {
+      const walletNet = event.payload.networkPassphrase ?? null;
+      patchWalletState({
+        publicKey: event.payload.address ?? null,
+        walletNetwork: walletNet,
+        networkMatches: walletNet
+          ? walletNet.toLowerCase() === config.networkPassphrase.toLowerCase()
+          : true,
+        ready: true,
+      });
+    });
+  }
+
+  try {
+    const { address } = await StellarWalletsKit.getAddress();
+    patchWalletState({ publicKey: address, ready: true });
+  } catch {
+    patchWalletState({ publicKey: null, ready: true });
+  }
+
+  kitReady = true;
+}
+
 export function useWallet(): {
   wallet: WalletState;
   connect: () => Promise<string>;
   disconnect: () => Promise<void>;
+  warmup: () => Promise<void>;
   /** Native (XLM) balance of the connected address, or null. */
   nativeBalance: string | null;
   refreshBalance: () => Promise<void>;
 } {
   const [wallet, setWallet] = useState<WalletState>({
-    publicKey: null,
-    walletId: null,
-    walletNetwork: null,
-    appNetwork: config.network,
-    networkMatches: true,
-    ready: false,
+    ...sharedWalletState,
   });
-  const [nativeBalance, setNativeBalance] = useState<string | null>(null);
-  // Mirror of the active wallet id we get from WALLET_SELECTED
-  // events. We never read StellarWalletsKit.selectedModule directly
-  // because it's a throwing getter that raises `{ code: -3,
-  // message: 'Please set the wallet first' }` until the user picks
-  // a wallet via the auth modal.
-  const walletIdRef = useRef<string | null>(null);
+  const [nativeBalance, setNativeBalanceState] = useState<string | null>(sharedNativeBalance);
 
   const refreshBalance = useCallback(async () => {
     if (!wallet.publicKey) {
@@ -66,97 +141,14 @@ export function useWallet(): {
   }, [wallet.publicKey]);
 
   useEffect(() => {
-    let cancelled = false;
-    const unbinds: Array<() => void> = [];
-
-    (async () => {
-      try {
-        const { StellarWalletsKit, KitEventType } = await import(
-          "@creit.tech/stellar-wallets-kit"
-        );
-        const { defaultModules } = await import(
-          "@creit.tech/stellar-wallets-kit/modules/utils"
-        );
-        const net = await resolveKitNetwork();
-
-        StellarWalletsKit.init({
-          network: net.name as Parameters<typeof StellarWalletsKit.init>[0]["network"],
-          modules: defaultModules(),
-        });
-        StellarWalletsKit.setNetwork(
-          net.name as Parameters<typeof StellarWalletsKit.setNetwork>[0],
-        );
-        setKitHandle({
-          signTransaction: (xdr, opts) =>
-            StellarWalletsKit.signTransaction(xdr, {
-              networkPassphrase: opts?.networkPassphrase ?? net.passphrase,
-              address: opts?.address,
-            }),
-        });
-
-        // Track the active wallet id via the dedicated event. This
-        // is the supported way to learn the id — reading
-        // `StellarWalletsKit.selectedModule` directly is a throwing
-        // getter that raises `{ code: -3 }` until a wallet is set.
-        unbinds.push(
-          StellarWalletsKit.on(KitEventType.WALLET_SELECTED, (event) => {
-            if (cancelled) return;
-            walletIdRef.current = event.payload.id ?? null;
-            setWallet((w) => ({ ...w, walletId: event.payload.id ?? null }));
-          }),
-        );
-
-        unbinds.push(
-          StellarWalletsKit.on(
-            KitEventType.STATE_UPDATED,
-            (event) => {
-              if (cancelled) return;
-              const walletNet = event.payload.networkPassphrase ?? null;
-              setWallet((w) => ({
-                ...w,
-                publicKey: event.payload.address ?? null,
-                walletNetwork: walletNet,
-                networkMatches: walletNet
-                  ? walletNet === net.passphrase
-                  : w.networkMatches,
-                ready: true,
-              }));
-            },
-          ),
-        );
-
-        if (cancelled) return;
-        // The kit's `getAddress()` may throw `{ code: -3 }` if no
-        // wallet was ever selected (e.g. fresh visitor, hot-reload).
-        // The kit throws a plain object, not an Error instance, so a
-        // bare `catch {}` swallows it correctly.
-        try {
-          const { address } = await StellarWalletsKit.getAddress();
-          if (!cancelled) {
-            setWallet((w) => ({ ...w, publicKey: address, ready: true }));
-          }
-        } catch {
-          if (!cancelled) {
-            setWallet((w) => ({ ...w, publicKey: null, ready: true }));
-          }
-        }
-      } catch {
-        if (!cancelled) {
-          setWallet((w) => ({ ...w, publicKey: null, ready: true }));
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      for (const u of unbinds) {
-        try {
-          u();
-        } catch {
-          /* unbind may throw if the kit wasn't initialised */
-        }
-      }
-    };
+    const unsubscribe = subscribeWallet(() => {
+      setWallet(sharedWalletState);
+      setNativeBalanceState(sharedNativeBalance);
+    });
+    void ensureKitRuntime().catch(() => {
+      patchWalletState({ ready: true });
+    });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -164,45 +156,29 @@ export function useWallet(): {
   }, [refreshBalance]);
 
   const connect = useCallback(async (): Promise<string> => {
-    const { StellarWalletsKit, KitEventType } = await import(
-      "@creit.tech/stellar-wallets-kit"
-    );
-    const net = await resolveKitNetwork();
+    await ensureKitRuntime();
     const { address } = await StellarWalletsKit.authModal();
-    // After authModal, the kit has fired a WALLET_SELECTED event
-    // that our subscription captured; we just need to push the
-    // public key into React state. Reading `selectedModule` would
-    // also work now, but we avoid the throwing getter to keep the
-    // path consistent.
-    setWallet((w) => ({ ...w, publicKey: address, ready: true }));
-    setKitHandle({
-      signTransaction: (xdr, opts) =>
-        StellarWalletsKit.signTransaction(xdr, {
-          networkPassphrase: opts?.networkPassphrase ?? net.passphrase,
-          address: opts?.address,
-        }),
-    });
-    // Re-bind the event listeners defensively in case the kit was
-    // re-initialised between mount and connect (HMR can do that).
-    StellarWalletsKit.on(KitEventType.WALLET_SELECTED, (event) => {
-      setWallet((w) => ({ ...w, walletId: event.payload.id ?? null }));
-    });
+    patchWalletState({ publicKey: address, ready: true });
     return address;
   }, []);
 
-  const disconnect = useCallback(async () => {
-    const { StellarWalletsKit } = await import(
-      "@creit.tech/stellar-wallets-kit"
-    );
-    await StellarWalletsKit.disconnect();
-    setWallet((w) => ({
-      ...w,
-      publicKey: null,
-      walletId: null,
-      ready: true,
-    }));
-    setNativeBalance(null);
+  const warmup = useCallback(async (): Promise<void> => {
+    await ensureKitRuntime();
   }, []);
 
-  return { wallet, connect, disconnect, nativeBalance, refreshBalance };
+  const disconnect = useCallback(async () => {
+    await ensureKitRuntime();
+    await StellarWalletsKit.disconnect();
+    patchWalletState({
+      publicKey: null,
+      walletId: null,
+      walletNetwork: null,
+      networkMatches: true,
+      ready: true,
+    });
+    setNativeBalance(null);
+    kitReady = false;
+  }, []);
+
+  return { wallet, connect, disconnect, warmup, nativeBalance, refreshBalance };
 }

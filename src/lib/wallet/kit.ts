@@ -1,17 +1,34 @@
-/**
- * Stellar Wallets Kit glue.
- *
- * The kit is a static class that owns the connected address, the
- * selected wallet module, and the network. We wrap it in a tiny
- * browser-only `KitHandle` so the rest of the app doesn't have to
- * know about the kit's singleton semantics.
- */
-
 "use client";
 
-import type { Networks } from "@creit.tech/stellar-wallets-kit";
+import { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit/sdk";
+import { defaultModules } from "@creit.tech/stellar-wallets-kit/modules/utils";
+import {
+  KitEventType,
+  Networks,
+} from "@creit.tech/stellar-wallets-kit/types";
 
-type KitLike = {
+import { config } from "@/lib/config";
+
+let isInitialized = false;
+
+export const initWalletKit = () => {
+  if (isInitialized) {
+    return;
+  }
+
+  StellarWalletsKit.init({
+    modules: defaultModules(),
+    network: resolveKitNetwork(),
+    authModal: {
+      hideUnsupportedWallets: false,
+      showInstallLabel: true,
+    },
+  });
+
+  isInitialized = true;
+};
+
+export type KitLike = {
   signTransaction: (
     xdr: string,
     opts?: { networkPassphrase?: string; address?: string },
@@ -33,24 +50,18 @@ export function getKitHandle(): KitLike {
   return current;
 }
 
-/** Resolved kit network + passphrase. */
-export type KitNetwork = {
-  name: string;
-  passphrase: string;
-};
-
-export async function resolveKitNetwork(): Promise<KitNetwork> {
-  const { Networks } = await import("@creit.tech/stellar-wallets-kit");
-  const envName = (process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? "testnet").toLowerCase();
-  const envPassphrase =
-    process.env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE ??
-    "Test SDF Network ; September 2015";
-  const map: Record<string, Networks> = {
-    public: Networks.PUBLIC,
-    mainnet: Networks.PUBLIC,
-    testnet: Networks.TESTNET,
-    futurenet: Networks.FUTURENET,
-  };
-  const network = map[envName] ?? (envName as unknown as Networks);
-  return { name: String(network), passphrase: envPassphrase };
+export function resolveKitNetwork(): Networks {
+  const envName = (config.network ?? "testnet").toLowerCase();
+  switch (envName) {
+    case "mainnet":
+    case "public":
+      return Networks.PUBLIC;
+    case "futurenet":
+      return Networks.FUTURENET;
+    case "testnet":
+    default:
+      return Networks.TESTNET;
+  }
 }
+
+export { KitEventType, Networks, StellarWalletsKit };

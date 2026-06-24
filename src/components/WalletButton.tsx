@@ -6,8 +6,18 @@ import { useWallet } from "@/hooks/useWallet";
 
 const shorten = (pk: string) => `${pk.slice(0, 6)}…${pk.slice(-4)}`;
 
+function formatWalletError(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "string") return e;
+  if (e && typeof e === "object") {
+    const maybeMessage = (e as { message?: unknown }).message;
+    if (typeof maybeMessage === "string") return maybeMessage;
+  }
+  return "Wallet action failed";
+}
+
 export function WalletButton() {
-  const { wallet, connect, disconnect, nativeBalance } = useWallet();
+  const { wallet, connect, disconnect, warmup, nativeBalance } = useWallet();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,15 +46,15 @@ export function WalletButton() {
         <button
           className="btn btn-small"
           onClick={async () => {
-            try {
-              setError(null);
-              setBusy(true);
-              await disconnect();
-            } catch (e) {
-              setError(e instanceof Error ? e.message : String(e));
-            } finally {
-              setBusy(false);
-            }
+          try {
+            setError(null);
+            setBusy(true);
+            await disconnect();
+          } catch (e) {
+            setError(formatWalletError(e));
+          } finally {
+            setBusy(false);
+          }
           }}
           disabled={busy}
         >
@@ -58,15 +68,22 @@ export function WalletButton() {
   return (
     <div className="wallet">
       <button
-        className="btn"
+        className="btn btn-small wallet-connect-btn"
         disabled={busy || !wallet.ready}
+        onPointerEnter={() => {
+          void warmup();
+        }}
+        onFocus={() => {
+          void warmup();
+        }}
         onClick={async () => {
           try {
             setError(null);
             setBusy(true);
+            await warmup();
             await connect();
           } catch (e) {
-            setError(e instanceof Error ? e.message : String(e));
+            setError(formatWalletError(e));
           } finally {
             setBusy(false);
           }

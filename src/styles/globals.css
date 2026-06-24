@@ -84,6 +84,7 @@ button { font: inherit; cursor: pointer; }
 
 .wallet { display: flex; align-items: center; gap: 8px; }
 .wallet.connected { gap: 10px; }
+.wallet-connect-btn { white-space: nowrap; }
 .wallet-pk { font-family: ui-monospace, "SF Mono", Menlo, monospace; padding: 6px 10px; background: var(--panel-2); border-radius: 8px; font-size: 12px; }
 .wallet-source { color: var(--muted); font-size: 11px; }
 .wallet-error { color: var(--danger); font-size: 12px; }
@@ -146,6 +147,7 @@ button { font: inherit; cursor: pointer; }
   .app-shell { padding: 16px; }
   .app-header { flex-wrap: wrap; gap: 12px; }
   .app-header nav { order: 3; width: 100%; justify-content: flex-start; }
+  .app-header-right { width: 100%; justify-content: flex-end; align-items: flex-end; }
   .hero { grid-template-columns: 1fr; }
   .hero-copy h2 { font-size: 30px; }
   .section h2 { font-size: 20px; }
@@ -160,6 +162,7 @@ button { font: inherit; cursor: pointer; }
   .app-shell { padding: 12px; }
   .app-header h1 { font-size: 18px; }
   .app-header nav a { padding: 6px 8px; font-size: 13px; }
+  .app-header-right { align-items: stretch; }
   .wallet { width: 100%; justify-content: flex-end; }
   .wallet.connected { width: 100%; }
   .wallet-stack { font-size: 12px; }
